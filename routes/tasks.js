@@ -15,9 +15,16 @@ function writeTasks(tasks) {
   fs.writeFileSync(dataPath, JSON.stringify(tasks, null, 2));
 }
 
-// GET all tasks
+// GET all tasks (with optional filtering)
 router.get("/", (req, res) => {
-  const tasks = readTasks();
+  let tasks = readTasks();
+
+  // Filtering by completion status
+  if (req.query.completed !== undefined) {
+    const isCompleted = req.query.completed === "true";
+    tasks = tasks.filter(t => t.completed === isCompleted);
+  }
+
   res.json(tasks);
 });
 
@@ -25,8 +32,17 @@ router.get("/", (req, res) => {
 router.post("/", (req, res) => {
   const { title } = req.body;
 
-  if (!title) {
-    return res.status(400).json({ error: "Title is required" });
+  // Strong validation
+  if (!title || typeof title !== "string") {
+    return res.status(400).json({
+      error: "Title must be a non-empty string"
+    });
+  }
+
+  if (title.trim().length < 3) {
+    return res.status(400).json({
+      error: "Title must be at least 3 characters long"
+    });
   }
 
   const tasks = readTasks();
@@ -54,6 +70,12 @@ router.put("/:id", (req, res) => {
 
   if (!task) {
     return res.status(404).json({ error: "Task not found" });
+  }
+
+  if (typeof completed !== "boolean") {
+    return res.status(400).json({
+      error: "Completed must be a boolean value"
+    });
   }
 
   task.completed = completed;
